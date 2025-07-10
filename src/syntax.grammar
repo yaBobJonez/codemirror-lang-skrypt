@@ -1,0 +1,56 @@
+@top file { (statement lf)* }
+statement { Option | Template | Rule }
+
+@detectDelim
+@precedence { more, not, quantified, or @right }
+
+Chars                   { (!more (char | literalLhs | Escape))+ }
+rhsChars[@name=Chars]   { (!more (char | literalRhs | Escape))+ }
+literalLhs {
+    "{}" | "∅"
+}
+literalRhs {
+    "@" | "%" | "=" | "/" | "_" | "(" | ")" | "[" | "]" | "{" | "}" | "<" | ">" | "~" | "|" | "+" | "*" | "->" | "→"
+}
+
+Option   { "@" Chars Eq Chars }
+Template { "%" Chars Eq lhs }
+Rule {
+    Slash? Lookaround? lhs Lookaround? Slash?
+    Arrow
+    rhs When?
+}
+Lookaround { "[" lhs "]" }
+When { "?" Chars }
+
+lhs  { expr+ }
+expr {
+    Group | Not | quantification | Or | OrGroup | Substitution | Underscore | Chars
+}
+Group           { "(" expr ")" }
+Not             { "~" expr !not }
+quantification  { expr !quantified Quantifier }
+Quantifier      { "?" | "+" | "*" }
+Or              { expr !or "|" expr }
+OrGroup         { "<" Chars ">" }
+Substitution    { "{" Chars "}" }
+
+rhs { Void | rhsChars }
+
+@tokens {
+    lf          { @eof | ("\r"? "\n")+ }
+    ws          { @whitespace+ }
+    Comment     { "#" ![\n]* lf }
+    Eq          { "=" }
+    Slash       { "/" }
+    Underscore  { "_" }
+    Arrow       { "->" | "→" }
+    Void        { "{}" | "∅" }
+    Escape {
+        "\\u" $[0-9A-Fa-f] $[0-9A-Fa-f] $[0-9A-Fa-f] $[0-9A-Fa-f]
+        | "\\" _
+    }
+    char { ![#@%=→∅()[\]{}<>~|/_?+*] }
+    @precedence { lf, ws, char }
+}
+@skip { ws | Comment }
