@@ -1,8 +1,12 @@
-@top file { (statement lf)* }
-statement { Option | Template | Rule }
+@top file { line* }
+line {
+    statement (lf | eof)
+    | lf
+}
 
-@detectDelim
 @precedence { more, not, quantified, or @right }
+@skip { ws | Comment }
+@detectDelim
 
 Chars                   { (!more (char | literalLhs | Escape))+ }
 rhsChars[@name=Chars]   { (!more (char | literalRhs | Escape))+ }
@@ -13,39 +17,40 @@ literalRhs {
     "@" | "%" | "=" | "/" | "_" | "(" | ")" | "[" | "]" | "{" | "}" | "<" | ">" | "~" | "|" | "+" | "*" | "->" | "→"
 }
 
-Option   { "@" Chars Eq Chars }
-Template { "%" Chars Eq lhs }
-Rule {
-    Slash? Lookaround? lhs Lookaround? Slash?
-    Arrow
-    rhs When?
+statement {
+    Option      { "@" Chars Eq Chars }
+    | Template  { "%" Chars Eq lhs }
+    | Rule      { Slash? Lookaround? lhs Lookaround? Slash? Arrow rhs When? }
 }
 Lookaround { "[" lhs "]" }
 When { "?" Chars }
 
 lhs  { expr+ }
 expr {
-    Group | Not | quantification | Or | OrGroup | Substitution | Underscore | Chars
+    Group               { "(" expr ")" }
+    | Not               { "~" expr !not }
+    | quantification    { expr !quantified Quantifier }
+    | Or                { expr !or "|" expr }
+    | OrGroup           { "<" Chars ">" }
+    | Substitution      { "{" Chars "}" }
+    | Underscore        { "_" }
+    | Chars
 }
-Group           { "(" expr ")" }
-Not             { "~" expr !not }
-quantification  { expr !quantified Quantifier }
 Quantifier      { "?" | "+" | "*" }
-Or              { expr !or "|" expr }
-OrGroup         { "<" Chars ">" }
-Substitution    { "{" Chars "}" }
 
-rhs { Void | rhsChars }
+rhs {
+    Void        { "{}" | "∅" }
+    | rhsChars
+}
 
 @tokens {
-    lf          { @eof | ("\r"? "\n")+ }
+    eof         { @eof }
+    lf          { ("\r"? "\n")+ }
     ws          { @whitespace+ }
-    Comment     { "#" ![\n]* lf }
+    Comment     { "#" ![\n]* }
     Eq          { "=" }
     Slash       { "/" }
-    Underscore  { "_" }
     Arrow       { "->" | "→" }
-    Void        { "{}" | "∅" }
     Escape {
         "\\u" $[0-9A-Fa-f] $[0-9A-Fa-f] $[0-9A-Fa-f] $[0-9A-Fa-f]
         | "\\" _
@@ -53,4 +58,3 @@ rhs { Void | rhsChars }
     char { ![#@%=→∅()[\]{}<>~|/_?+*] }
     @precedence { lf, ws, char }
 }
-@skip { ws | Comment }

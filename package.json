@@ -1,6 +1,6 @@
 {
   "name": "codemirror-lang-skrypt",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Skrypt language support for CodeMirror",
   "repository": "https://github.com/yaBobJonez/codemirror-lang-skrypt",
   "bugs": "https://github.com/yaBobJonez/codemirror-lang-skrypt/issues",
