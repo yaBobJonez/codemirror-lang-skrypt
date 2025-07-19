@@ -38,10 +38,19 @@ function getInvalidEscapes(view: EditorView, diagnostics: Diagnostic[]) {
     const badEscape = /\\u[0-9A-Fa-f]{0,3}(?![0-9A-Fa-f])/g;
     for (const match of doc.matchAll(badEscape)) {
         diagnostics.push({
-            from: match.index!,
-            to: match.index! + match[0].length,
+            from: match.index,
+            to: match.index + match[0].length,
             severity: "error",
             message: `Invalid Unicode escape ${match.toString()}`
+        });
+    }
+    const invalidInRhs = /(?<=(?:→|->).*)\\[vdDsS()}[\]|/+*\-](?=.*$)/gm;
+    for (const match of doc.matchAll(invalidInRhs)) {
+        diagnostics.push({
+            from: match.index,
+            to: match.index + match[0].length,
+            severity: "warning",
+            message: `Escape ${match.toString()} is only meaningful in the left-hand side of a rule`
         });
     }
 }

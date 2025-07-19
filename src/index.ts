@@ -33,6 +33,7 @@ export const SkryptLanguage = LRLanguage.define({
         "Template": t.definition(t.macroName),
         "Template/Chars Substitution/Chars": t.macroName,
         "Eq": t.definitionOperator,
+        "Comma": t.separator,
         "Slash Lookaround": t.squareBracket,
         "Arrow": t.updateOperator,
         "When": t.controlOperator,

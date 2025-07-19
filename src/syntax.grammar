@@ -14,29 +14,36 @@ literalLhs {
     "{}" | "∅"
 }
 literalRhs {
-    "@" | "%" | "=" | "/" | "_" | "(" | ")" | "[" | "]" | "{" | "}" | "<" | ">" | "~" | "|" | "+" | "*" | "->" | "→"
+    "@" | "%" | "="
+    | "," | "/" | "_" | "->" | "→"
+    | "(" | ")" | "[" | "]" | "{" | "}" | "<" | ">"
+    | "~" | "|" | "+" | "*"
 }
 
 statement {
     Option      { "@" Chars Eq Chars }
     | Template  { "%" Chars Eq lhs }
-    | Rule      { Slash? Lookaround? lhs Lookaround? Slash? Arrow rhs When? }
+    | Rule      { lhs Arrow rhs When? }
 }
-Lookaround { "[" lhs "]" }
 When { "?" Chars }
 
-lhs  { expr+ }
-expr {
+lhs     { pattern (Comma lf? pattern)* }
+pattern { Slash? Lookaround? expr Lookaround? Slash? }
+expr    {
+    terms   { term+ }
+    | Or    { expr !or "|" expr }
+}
+term {
     Group               { "(" expr ")" }
-    | Not               { "~" expr !not }
-    | quantification    { expr !quantified Quantifier }
-    | Or                { expr !or "|" expr }
+    | Not               { "~" term !not }
+    | quantification    { term !quantified Quantifier }
     | OrGroup           { "<" Chars ">" }
     | Substitution      { "{" Chars "}" }
     | Underscore        { "_" }
     | Chars
 }
-Quantifier      { "?" | "+" | "*" }
+Lookaround  { "[" expr "]" }
+Quantifier  { "?" | "+" | "*" }
 
 rhs {
     Void        { "{}" | "∅" }
@@ -49,12 +56,13 @@ rhs {
     ws          { @whitespace+ }
     Comment     { "#" ![\n]* }
     Eq          { "=" }
+    Comma       { "," }
     Slash       { "/" }
     Arrow       { "->" | "→" }
     Escape {
         "\\u" $[0-9A-Fa-f] $[0-9A-Fa-f] $[0-9A-Fa-f] $[0-9A-Fa-f]
         | "\\" _
     }
-    char { ![#@%=→∅()[\]{}<>~|/_?+*] }
+    char { ![#@%=,→∅()[\]{}<>~|/_?+*] }
     @precedence { lf, ws, char }
 }

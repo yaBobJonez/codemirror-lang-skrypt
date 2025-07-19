@@ -10,6 +10,7 @@ export const highlightStyle = HighlightStyle.define([
     {tag: t.definition(t.macroName), color: "#d35400", fontWeight: "bold"},
     {tag: t.macroName, color: "#e67e22"},
     {tag: t.definitionOperator, color: "#16a085"},
+    {tag: t.separator, color: "#1c2833"},
     {tag: t.squareBracket, color: "#8e44ad", fontWeight: "bold"},
     {tag: t.updateOperator, color: "#2c3e50", fontWeight: "bold"},
     {tag: t.controlOperator, color: "#2874a6", fontWeight: "bold"},
