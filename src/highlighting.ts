@@ -5,6 +5,8 @@ export const highlightStyle = HighlightStyle.define([
     {tag: t.lineComment, color: "#909497", fontStyle: "italic"},
     {tag: t.string, color: "#1e8449"},
     {tag: t.escape, color: "#27ae60"},
+    {tag: t.definition(t.processingInstruction), color: "#a93226", fontWeight: "bold"},
+    {tag: t.processingInstruction, color: "#c0392b"},
     {tag: t.definition(t.variableName), color: "#2980b9", fontWeight: "bold"},
     {tag: t.variableName, color: "#3498db"},
     {tag: t.definition(t.macroName), color: "#d35400", fontWeight: "bold"},

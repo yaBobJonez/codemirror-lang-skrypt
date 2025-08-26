@@ -4,50 +4,87 @@ line {
     | lf
 }
 
-@precedence { more, not, quantified, or @right }
+@precedence { more, diff, not, quantified, and @right, or @right }
 @skip { ws | Comment }
 @detectDelim
 
-Chars                   { (!more (char | literalLhs | Escape))+ }
-rhsChars[@name=Chars]   { (!more (char | literalRhs | Escape))+ }
+Chars                   { string | (!more (char | literalLhs | Escape))+ }
+rhsChars[@name=Chars]   { string | (!more (char | literalRhs | Escape))+ }
 literalLhs {
-    "{}" | "∅"
+    digit | "{}" | "∅"
 }
 literalRhs {
-    "@" | "%" | "="
-    | "," | "/" | "_" | "->" | "→"
+    digit | "!" | "@" | "%" | "="
+    | "," | ":" | ";" | "^" | "/" | "_" | "." | "->" | "→"
     | "(" | ")" | "[" | "]" | "{" | "}" | "<" | ">"
-    | "~" | "|" | "+" | "*"
+    | "~" | "&" | "|" | "-" | "+" | "*" | "*="
+}
+@skip {} {
+    string  { "`" (stringContent | stringEscape)* stringEnd }
+    OrGroup_ { "<" (charsetChar | Range | charsetEscape)* charsetEnd }
+}
+@local tokens {
+    stringEnd                   { "`" }
+    stringEscape[@name=Escape]  { "\\" $[`rn] }
+    stringContent               { ![\r\n] }
+    @precedence { stringEnd, stringEscape, stringContent }
+}
+@local tokens {
+    charsetEnd                  { ">" }
+    Range                       { charsetChar "-" charsetChar }
+    charsetEscape[@name=Escape] { "\\" _ }
+    charsetChar[@name=Chars]    { ![\r\n] }
+    @precedence { charsetEnd, charsetEscape, Range, charsetChar }
 }
 
 statement {
-    Option      { "@" Chars Eq Chars }
+    Directive   { "!" Chars ( Eq Chars (Comma Chars)* )? }
+    | Option    { "@" Chars Eq Chars }
     | Template  { "%" Chars Eq lhs }
-    | Rule      { lhs Arrow rhs When? }
+    | Rule      { lhs Arrow rhs WhenClause? }
+    | Block     { WhenClause (Comma Expr)? Colon | Expr Colon }
+    | Semi
 }
-When { "?" Chars }
+WhenClause  { "?" when }
+Expr        { expr }
 
 lhs     { pattern (Comma lf? pattern)* }
-pattern { Slash? Lookaround? expr Lookaround? Slash? }
+pattern { (Slash | Lookaround)* expr (Lookaround | Slash)* }
 expr    {
     terms   { term+ }
     | Or    { expr !or "|" expr }
 }
 term {
     Group               { "(" expr ")" }
+    | Difference        { term "-" !diff term }
     | Not               { "~" term !not }
     | quantification    { term !quantified Quantifier }
     | OrGroup           { "<" Chars ">" }
     | Substitution      { "{" Chars "}" }
     | Underscore        { "_" }
+    | Caret             { "^" }
     | Chars
 }
 Lookaround  { "[" expr "]" }
-Quantifier  { "?" | "+" | "*" }
+Quantifier  {
+    "?" | "+" | "*"
+    | times Number !more "-" Number
+    | times Number !more "+"
+    | times Number
+}
+Number  { (!more digit)+ }
 
 rhs {
     Void        { "{}" | "∅" }
     | rhsChars
+}
+
+when {
+    group   { "(" when ")" }
+    | WhenNot[@name=Not]    { "~" when !not }
+    | And                   { when !and "&" when }
+    | WhenOr[@name=Or]      { when !or "|" when }
+    | Chars
 }
 
 @tokens {
@@ -58,11 +95,15 @@ rhs {
     Eq          { "=" }
     Comma       { "," }
     Slash       { "/" }
+    Colon       { ":" }
+    Semi        { ";" }
     Arrow       { "->" | "→" }
+    times       { "×" | "*=" }
     Escape {
         "\\u" $[0-9A-Fa-f] $[0-9A-Fa-f] $[0-9A-Fa-f] $[0-9A-Fa-f]
         | "\\" _
     }
-    char { ![#@%=,→∅()[\]{}<>~|/_?+*] }
+    digit   { $[0-9] }
+    char    { ![#!@%$`'"0-9=:;.,^→∅()[\]{}<>~&|\-/_?+*×] }
     @precedence { lf, ws, char }
 }

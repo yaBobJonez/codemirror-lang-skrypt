@@ -3,9 +3,10 @@ import {syntaxTree} from "@codemirror/language";
 import {EditorState} from "@codemirror/state"
 import {highlightTree, tags} from "@lezer/highlight";
 import {highlightStyle} from "./highlighting";
-import {coloredSpan, within} from "./utils";
+import {coloredSpan, highlightedNode, within} from "./utils";
+import {SyntaxNode, SyntaxNodeRef} from "@lezer/common";
 
-export default function getTemplateExpansionHint(view: EditorView, pos: number, side: -1 | 1) {
+export default function getTooltips(view: EditorView, pos: number, side: -1 | 1) {
     const node = syntaxTree(view.state).resolveInner(pos, side);
     if (within(node, "Substitution")) {
         const templates = extractTemplates(view.state, pos);
@@ -23,6 +24,7 @@ export default function getTemplateExpansionHint(view: EditorView, pos: number, 
         let html: HTMLElement;
         if (templates.has("letters")) {
             const container = templates.get("letters")!;
+            container.prepend(coloredSpan(view, tags.logicOperator, "~"));
             container.prepend(coloredSpan(view, tags.squareBracket, "["));
             container.append(coloredSpan(view, tags.squareBracket, "]"));
             html = container;
@@ -57,16 +59,44 @@ export default function getTemplateExpansionHint(view: EditorView, pos: number, 
             create: (): TooltipView => ( {dom: html} )
         };
     }
+    else if (within(node, "Semi")) {
+        const block = getClosestBlock(view, pos);
+        if (block === null) return null;
+        return {
+            pos: node.from,
+            end: node.to,
+            above: true,
+            create: (): TooltipView => ( {dom: highlightedNode(view, block)} )
+        };
+    }
+    else if (within(node, "Caret")) {
+        const block = getClosestBlock(view, pos);
+        if (block === null) return null;
+        const expr = block.getChild("Expr");
+        if (expr === null) return null;
+        return {
+            pos: node.from,
+            end: node.to,
+            above: true,
+            create: (): TooltipView => ( {dom: highlightedNode(view, expr)} )
+        };
+    }
     return null;
 }
 
 function extractTemplates(state: EditorState, pos: number): Map<string, HTMLElement> {
-    const templates = new Map<string, HTMLElement>();
+    let templates = new Map<string, HTMLElement>();
     syntaxTree(state).iterate({
         to: pos,
         enter: node => {
             if (node.name === "file") return true;
-            if (node.name === "Template") {
+            if (node.name === "Directive") {
+                const nameNode = node.node.getChild("Chars");
+                if (!nameNode) return false;
+                const name = state.sliceDoc(nameNode.from, nameNode.to);
+                if (name === "function") templates = new Map();
+            }
+            else if (node.name === "Template") {
                 const nameNode = node.node.getChild("Chars");
                 const lhsNode = node.node.lastChild;
                 if (!nameNode || !lhsNode) return false;
@@ -92,4 +122,19 @@ function extractTemplates(state: EditorState, pos: number): Map<string, HTMLElem
         }
     });
     return templates;
+}
+
+function getClosestBlock(view: EditorView, pos: number) {
+    const blocks: SyntaxNode[] = [];
+    syntaxTree(view.state).iterate({
+        to: pos,
+        enter: (node) => {
+            if (node.name === "file") return true;
+            if (node.name === "Block") blocks.push(node.node);
+            if (node.name === "Semi") blocks.pop();
+            return false;
+        }
+    });
+    if (blocks.length === 0) return null;
+    return blocks[blocks.length - 1];
 }
